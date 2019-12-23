@@ -1,10 +1,8 @@
 // Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using Grpc.Core;
-using Microsoft.Win32.SafeHandles;
-using Pulumirpc;
 
 namespace Pulumi
 {
@@ -48,7 +46,6 @@ namespace Pulumi
         internal static IDeploymentInternal InternalInstance
             => (IDeploymentInternal)Instance;
 
-        private readonly Options _options;
         private readonly string _projectName;
         private readonly string _stackName;
         private readonly bool _isDryRun;
@@ -56,8 +53,7 @@ namespace Pulumi
         private readonly ILogger _logger;
         private readonly IRunner _runner;
 
-        internal Engine.EngineClient Engine { get; }
-        internal ResourceMonitor.ResourceMonitorClient Monitor { get; }
+        internal IRpcDispatcher RpcDispatcher { get; }
 
         internal Stack? _stack;
         internal Stack Stack
@@ -93,27 +89,32 @@ namespace Pulumi
             _stackName = stack;
             _projectName = project;
 
-            _options = new Options(
-                queryMode: queryModeValue, parallel: parallelValue, pwd: pwd,
-                monitor: monitor, engine: engine, tracing: tracing);
-
-            Serilog.Log.Debug("Creating Deployment Engine.");
-            this.Engine = new Engine.EngineClient(new Channel(engine, ChannelCredentials.Insecure));
-            Serilog.Log.Debug("Created Deployment Engine.");
-
-            Serilog.Log.Debug("Creating Deployment Monitor.");
-            this.Monitor = new ResourceMonitor.ResourceMonitorClient(new Channel(monitor, ChannelCredentials.Insecure));
-            Serilog.Log.Debug("Created Deployment Monitor.");
+            Serilog.Log.Debug("Creating Deployment Engine and Monitor.");
+            this.RpcDispatcher = new GrpcDispatcher(engine, monitor);
+            Serilog.Log.Debug("Created Deployment Engine and Monitor.");
 
             _runner = new Runner(this);
-            _logger = new Logger(this, this.Engine);
+            _logger = new Logger(this, this.RpcDispatcher);
+        }
+
+        /// <summary>
+        /// This constructor is called from <see cref="TestAsync{TStack}"/> with
+        /// a mocked monitor and dummy values for project and stack.
+        /// </summary>
+        private Deployment(IRpcDispatcher rpcDispatcher)
+        {
+            _isDryRun = true;
+            _stackName = "teststack";
+            _projectName = "testproject";
+            this.RpcDispatcher = rpcDispatcher;
+            _runner = new Runner(this);
+            _logger = new Logger(this, this.RpcDispatcher);
         }
 
         string IDeployment.ProjectName => _projectName;
         string IDeployment.StackName => _stackName;
         bool IDeployment.IsDryRun => _isDryRun;
 
-        Options IDeploymentInternal.Options => _options;
         ILogger IDeploymentInternal.Logger => _logger;
         IRunner IDeploymentInternal.Runner => _runner;
 

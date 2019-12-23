@@ -1,24 +1,22 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
-using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Moq;
 using Pulumi.Serialization;
+using Pulumi.Testing;
 using Xunit;
-using Xunit.Sdk;
 
-namespace Pulumi.Tests
+namespace Pulumi.Tests.Core
 {
     public class StackTests
     {
         private class ValidStack : Stack
         {
             [Output("foo")]
-            public Output<string> ExplicitName { get; }
+            public Output<string> ExplicitName { get; set; }
 
             [Output]
-            public Output<string> ImplicitName { get; }
+            public Output<string> ImplicitName { get; set; }
 
             public ValidStack()
             {
@@ -30,38 +28,40 @@ namespace Pulumi.Tests
         [Fact]
         public async Task ValidStackInstantiationSucceeds()
         {
-            var (stack, outputs) = await Run<ValidStack>();
-            Assert.Equal(2, outputs.Count);
-            Assert.Same(stack.ExplicitName, outputs["foo"]);
-            Assert.Same(stack.ImplicitName, outputs["ImplicitName"]);
+            var result = await Deployment.TestAsync<ValidStack>(new DefaultMocks());
+
+            Assert.False(result.HasErrors, "Expected the deployment to succeed");
+            
+            Assert.NotNull(result.StackOutputs);
+            Assert.Equal(2, result.StackOutputs.Count);
+            Assert.Equal("bar", result.StackOutputs["foo"]);
+            Assert.Equal("buzz", result.StackOutputs["ImplicitName"]);
         }
 
         private class NullOutputStack : Stack
         {
             [Output("foo")]
-            public Output<string>? Foo { get; }
+            public Output<string>? Foo { get; set; }
+
+            public NullOutputStack()
+            {
+                Foo = null;
+            }
         }
 
         [Fact]
         public async Task StackWithNullOutputsThrows()
         {
-            try
-            {
-                var (stack, outputs) = await Run<NullOutputStack>();
-            }
-            catch (RunException ex)
-            {
-                Assert.Contains("foo", ex.Message);
-                return;
-            }
-
-            throw new XunitException("Should not come here");
+            var result = await Deployment.TestAsync<NullOutputStack>(new DefaultMocks());
+            
+            Assert.True(result.HasErrors, "Deployment should have failed");
+            Assert.Contains("Output(s) 'foo' have no value assigned", result.LoggedErrors[0]);
         }
 
         private class InvalidOutputTypeStack : Stack
         {
             [Output("foo")]
-            public string Foo { get; }
+            public string Foo { get; set; }
 
             public InvalidOutputTypeStack()
             {
@@ -72,42 +72,24 @@ namespace Pulumi.Tests
         [Fact]
         public async Task StackWithInvalidOutputTypeThrows()
         {
-            try
-            {
-                var (stack, outputs) = await Run<InvalidOutputTypeStack>();
-            }
-            catch (RunException ex)
-            {
-                Assert.Contains("foo", ex.Message);
-                return;
-            }
-
-            throw new XunitException("Should not come here");
+            var result = await Deployment.TestAsync<InvalidOutputTypeStack>(new DefaultMocks());
+            
+            Assert.True(result.HasErrors, "Deployment should have failed");
+            Assert.Contains("Foo was not an Output", result.LoggedErrors[0]);
         }
-
-        private async Task<(T, IDictionary<string, object?>)> Run<T>() where T : Stack, new()
+        
+        private class DefaultMocks : IMocks
         {
-            // Arrange
-            Output<IDictionary<string, object?>>? outputs = null;
+            public Task<(string id, object state)> NewResourceAsync(string type, string name,
+                ImmutableDictionary<string, object> inputs, string? provider, string? id)
+            {
+                var outputs = inputs.Add("name", "test");
+                return Task.FromResult((type + "-test", (object)outputs));
 
-            var mock = new Mock<IDeploymentInternal>(MockBehavior.Strict);
-            mock.Setup(d => d.ProjectName).Returns("TestProject");
-            mock.Setup(d => d.StackName).Returns("TestStack");
-            mock.SetupSet(content => content.Stack = It.IsAny<Stack>());
-            mock.Setup(d => d.ReadOrRegisterResource(It.IsAny<Stack>(), It.IsAny<ResourceArgs>(), It.IsAny<ResourceOptions>()));
-            mock.Setup(d => d.RegisterResourceOutputs(It.IsAny<Stack>(), It.IsAny<Output<IDictionary<string, object?>>>()))
-                .Callback((Resource _, Output<IDictionary<string, object?>> o) => outputs = o);
+            }
 
-            Deployment.Instance = mock.Object;
-
-            // Act
-            var stack = new T();
-            stack.RegisterPropertyOutputs();
-
-            // Assert
-            Assert.NotNull(outputs);
-            var values = await outputs!.DataTask;
-            return (stack, values.Value);
+            public Task<object> CallAsync(string token, ImmutableDictionary<string, object> args, string? provider)
+                => Task.FromResult((object)args);
         }
     }
 }

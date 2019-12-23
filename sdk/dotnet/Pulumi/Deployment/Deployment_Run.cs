@@ -3,7 +3,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading.Tasks;
+using Pulumi.Testing;
 
 namespace Pulumi
 {
@@ -86,6 +88,22 @@ namespace Pulumi
         /// </summary>
         public static Task<int> RunAsync<TStack>() where TStack : Stack, new()
             => CreateRunner().RunAsync<TStack>();
+
+        /// <summary>
+        /// Entry point to test a Pulumi application. Deployment will
+        /// instantiate a new stack instance based on the type passed as TStack
+        /// type parameter. This method creates no real resources.
+        /// </summary>
+        /// <typeparam name="TStack">The type of the stack to test.</typeparam>
+        /// <returns>Test result containing created resources and errors, if any.</returns>
+        public static async Task<TestResult> TestAsync<TStack>(IMocks mocks) where TStack : Stack, new()
+        {
+            var monitor = new MockRpcDispatcher(mocks);
+            var deployment = new Deployment(monitor);
+            Instance = deployment;
+            var code = await deployment._runner.RunAsync<TStack>();
+            return new TestResult(code > 0, monitor.Errors, monitor.Resources, monitor.StackOutputs);
+        }
 
         private static IRunner CreateRunner()
         {

@@ -11,6 +11,9 @@ CHANGELOG
 - Add support for mocking the resource monitor to the NodeJS and Python SDKs.
   [#3738](https://github.com/pulumi/pulumi/pull/3738/files)
 
+- Support for unit testing and mocking in the .NET SDK.
+  [#3696](https://github.com/pulumi/pulumi/pull/3696)
+
 ## 1.11.1 (2020-02-26)
 - Fix a regression for CustomTimeouts in Python SDK.
   [#3964](https://github.com/pulumi/pulumi/pull/3964)
