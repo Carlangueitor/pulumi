@@ -180,7 +180,7 @@ type LiteralValueTokens struct {
 
 func (LiteralValueTokens) isNodeTokens() {}
 
-// ObjectConstItemTokens records the tokens associated with an hclsyntax.ObjectConsItem.
+// ObjectConsItemTokens records the tokens associated with an hclsyntax.ObjectConsItem.
 type ObjectConsItemTokens struct {
 	Equals Token
 	Comma  *Token
@@ -282,7 +282,7 @@ func (l tokenList) offsetIndex(offset int) int {
 		case r.Start.Byte <= offset && offset < r.End.Byte:
 			return base + i
 		case r.End.Byte <= offset:
-			l, base = l[i:], base+i
+			l, base = l[i+1:], base+i+1
 		default:
 			contract.Failf("unexpected index condifion: %v, %v, %v", r.Start.Byte, r.End.Byte, offset)
 		}
