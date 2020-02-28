@@ -28,6 +28,7 @@ jobs:
       uses: actions/setup-go@v1
       with:
         go-version: ${{ matrix.go-version }}
+    - run: go env
     - name: Install Pulumi CLI
       uses: pulumi/action-install-pulumi-cli@releases/v1
     - name: Set up Python ${{ matrix.python-version }}
@@ -38,25 +39,33 @@ jobs:
       run: |
         pip3 install pyenv-win
         pip3 install pipenv
+    - name: Install Go Dep
+      shell: bash
+      run: |
+        echo "::set-env name=GOPATH::D:\\Pulumi\\go"
+        echo "::add-path::D:\\Pulumi\\go\\bin"
+        go get -v github.com/golang/dep/cmd/dep
     - name: Set Build Env Vars
+      shell: bash
+      run: |
+        echo "::set-env name=PULUMI_TEST_OWNER::moolumi"
+        echo "::set-env name=PULUMI_LOCAL_NUGET::D:\\Pulumi\\nuget"
+        echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
+        echo "::set-env name=PULUMI_ACCESS_TOKEN::${{ secrets.PULUMI_ACCESS_TOKEN }}"
+        echo "::add-path::D:\\Pulumi\\bin"
+    - name: Set AWS Env Vars
       uses: allenevans/set-env@v1.0.0
       with:
-        PULUMI_TEST_OWNER: "moolumi"
-        PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
-        PULUMI_ROOT: "D:\\Pulumi"
-        PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
-        DOTNET_CLI_TELEMETRY_OPTOUT: 1
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-      with:
-        fetch-depth: 0
     - name: Get dependencies
       run: |
-        set GOMODULE111=on
+        export GOMODULE111=on
         go mod tidy
         go mod vendor
+      shell: bash
     - name: Build Pulumi
       run: |
         dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"

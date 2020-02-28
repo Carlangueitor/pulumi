@@ -21,7 +21,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/workspace"
 )
 
