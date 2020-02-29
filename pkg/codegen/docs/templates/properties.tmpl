@@ -12,11 +12,11 @@
         <tr>
             <td class="align-top">{{.Name}}</td>
             <td class="align-top">
-                <code>{{.Type}}</code>
+                <code>{{htmlSafe .Type}}</code>
             </td>
             <td class="align-top">
                 {{htmlSafe "{{% md %}}"}}
-                {{if .IsInput}} {{if .IsRequired}} (Required) {{else}} (Optional) {{end}} {{end}} {{.Comment}}
+                {{if .IsInput}} {{if .IsRequired}} (Required) {{else}} (Optional) {{end}} {{end}} {{htmlSafe .Comment}}
                 {{htmlSafe "{{% /md %}}"}}
             </td>
         </tr>
