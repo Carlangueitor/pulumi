@@ -1,7 +1,6 @@
-{{define constructor}}
 <span class="k">new</span>
 <span class="nx">
-    <a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#%s>%s</a>
+    <a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#{{.Name}}>{{.Name}}</a>
 </span>
 <span class="p">(</span>
 <span class="nx">name</span>
@@ -11,10 +10,14 @@
 </span>
 <span class="p">,</span>
 &nbsp;
-<span class="nx">args%s</span>
+{{if .IsArgsRequired}}
+<span class="nx">args</span>
+{{else}}
+<span class="nx">args?</span>
+{{end}}
 :&nbsp;
 <span class="kt">
-    <a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#%s>%s</a>
+    <a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#{{.ArgsType}}>{{.ArgsType}}</a>
 </span>
 <span class="p">,</span>
 &nbsp;
@@ -24,4 +27,3 @@
     <a href=/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions>pulumi.CustomResourceOptions</a>
 </span>
 <span class="p">);</span>
-{{end}}

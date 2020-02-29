@@ -15,9 +15,9 @@
                 <code>{{.Type}}</code>
             </td>
             <td class="align-top">
-                {{%% md %%}}
+                {{htmlSafe "{{%% md %%}}"}}
                 {{if .IsInput}} {{if .IsRequired}} (Required) {{else}} (Optional) {{end}} {{end}} {{.Comment}}
-                {{%% /md %%}}
+                {{htmlSafe "{{%% /md %%}}"}}
             </td>
         </tr>
     {{end}}

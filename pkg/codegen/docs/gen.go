@@ -71,7 +71,7 @@ type resourceArgs struct {
 	Comment  string
 	Examples []exampleUsage
 
-	ConstructorGenerator func(lang string) string
+	ConstructorGenerator func(string, bool) string
 	ArgsRequired         bool
 
 	InputProperties  []Property
@@ -209,29 +209,16 @@ func (mod *modContext) typeStringPulumi(t schema.Type, link bool) string {
 	return typ
 }
 
-func (mod *modContext) genConstructorTS(r schema.Resource) string {
+func (mod *modContext) genConstructorTS(r schema.Resource, isArgsRequired bool) string {
 	name := resourceName(r)
 
-	allOptionalInputs := true
-	for _, prop := range r.InputProperties {
-		if prop.IsRequired {
-			allOptionalInputs = false
-			break
-		}
-	}
-
-	var argsFlags string
-	if allOptionalInputs {
-		// If the number of required input properties was zero, we can make the args object optional.
-		argsFlags = "?"
-	}
 	argsType := name + "Args"
 
 	buffer := &bytes.Buffer{}
-	err := templates.ExecuteTemplate(buffer, "ts_constructor.tmpl", map[string]string{
-		"Name":  name,
-		"Flags": argsFlags,
-		"Type":  argsType,
+	err := templates.ExecuteTemplate(buffer, "ts_constructor.tmpl", map[string]interface{}{
+		"Name":           name,
+		"ArgsType":       argsType,
+		"IsArgsRequired": isArgsRequired,
 	})
 
 	if err != nil {
@@ -313,7 +300,7 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 		}
 	}
 	sort.Slice(objs, func(i, j int) bool {
-		return tokenToName(objs[i].Name) < tokenToName(objs[j].Name)
+		return objs[i].Name < objs[j].Name
 	})
 
 	return objs
@@ -323,10 +310,10 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(*r)
 
-	constructorGenerator := func(lang string) string {
+	constructorGenerator := func(lang string, isArgsRequired bool) string {
 		switch lang {
 		case "typescript":
-			return mod.genConstructorTS(*r)
+			return mod.genConstructorTS(*r, isArgsRequired)
 		case "python":
 			return mod.genConstructorPython(*r)
 		case "go":
@@ -339,7 +326,6 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	}
 
 	stateType := name + "State"
-
 	var stateParam string
 	if r.StateInputs != nil {
 		stateParam = fmt.Sprintf("state?: %s, ", stateType)
@@ -386,7 +372,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		},
 
 		Comment: r.Comment,
-		// TODO: Remove this - it's just temporary to include some data we don't have available yet.
+		// TODO: This is just temporary to include some data we don't have available yet.
 		Examples: mod.genMockupExamples(r),
 
 		ConstructorGenerator: constructorGenerator,
@@ -642,7 +628,15 @@ func (mod *modContext) genIndex(exports []string) string {
 // schema.
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	var err error
-	templates, err = template.ParseGlob("./pkg/codegen/docs/templates/*.tmpl")
+	templates, err = template.New("").Funcs(template.FuncMap{
+		"htmlSafe": func(html string) template.HTML {
+			// Markdown fragments in the templates need to be rendered as-is,
+			// so that html/template package doesn't try to inject data into it,
+			// which will most certainly fail.
+			// nolint gosec
+			return template.HTML(html)
+		},
+	}).ParseGlob("/Users/praneetloke/go/src/github.com/pulumi/pulumi/pkg/codegen/docs/templates/*.tmpl")
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing templates")
 	}
