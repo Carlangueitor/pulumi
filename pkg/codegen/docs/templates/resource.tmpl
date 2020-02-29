@@ -1,6 +1,6 @@
 {{template "header" .Header}}
 
-{{.Comment}}
+{{htmlSafe .Comment}}
 
 ## Example Usage
 
@@ -10,7 +10,7 @@
 {{htmlSafe "{{< langchoose nojavascript nogo >}}"}}
 
 ```typescript
-{{.Code}}
+{{htmlSafe .Code}}
 ```
 
 ```python
@@ -20,7 +20,7 @@ Coming soon!
 ```csharp
 Coming soon!
 ```
-{{end}}}
+{{end}}
 
 ## Create a {{.Header.Title}} Resource
 
@@ -96,17 +96,17 @@ public static Bucket Get(string name, Input<string> id, BucketState? state = nul
 
 Get an existing {{.Header.Title}} resource's state with the given name, ID, and optional extra properties used to qualify the lookup.
 
-{{htmlSafe "{{%% lang nodejs %%}}"}}
+{{htmlSafe "{{% lang nodejs %}}"}}
 {{template "read_inputs"}}
-{{htmlSafe "{{%% /lang %%}}"}}
+{{htmlSafe "{{% /lang %}}"}}
 
-{{htmlSafe "{{%% lang go %%}}"}}
+{{htmlSafe "{{% lang go %}}"}}
 {{template "read_inputs"}}
-{{htmlSafe "{{%% /lang %%}}"}}
+{{htmlSafe "{{% /lang %}}"}}
 
-{{htmlSafe "{{%% lang csharp %%}}"}}
+{{htmlSafe "{{% lang csharp %}}"}}
 {{template "read_inputs"}}
-{{htmlSafe "{{%% /lang %%}}"}}
+{{htmlSafe "{{% /lang %}}"}}
 
 {{if .StateParam }}
 The following state arguments are supported:
@@ -118,11 +118,9 @@ The following state arguments are supported:
 TODO: How do we want to show import? It will take a paragraph or two of explanation plus example, similar
 to the content at https://www.pulumi.com/docs/intro/concepts/programming-model/#import
 -->
-
 TODO
 
 ## Supporting Types
-
 {{range .NestedTypes}}
 ### {{.Name}}
 
