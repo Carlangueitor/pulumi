@@ -26,9 +26,7 @@ Coming soon!
 
 {{htmlSafe "{{< langchoose csharp >}}"}}
 
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript">
-{{call .ConstructorGenerator "typescript" .ArgsRequired}}
-</code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new</span>&nbsp;<span class="nx"><a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#{{.Header.Title}}>{{.Header.Title}}</a></span><span class="p">(</span><span class="nx">name</span>:&nbsp;<span class="kt"><a href=https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String>string</a></span><span class="p">,</span>&nbsp;{{if .ArgsRequired}}<span class="nx">args</span>{{else}}<span class="nx">args?</span>{{end}}:&nbsp;<span class="kt"><a href=/docs/reference/pkg/nodejs/pulumi/aws/s3/#{{.Header.Title}}Args>{{.Header.Title}}Args</a></span><span class="p">,</span>&nbsp;<span class="nx">opts?</span>:&nbsp;<span class="kt"><a href=/docs/reference/pkg/nodejs/pulumi/pulumi/#CustomResourceOptions>pulumi.CustomResourceOptions</a></span><span class="p">);</span></code></pre></div>
 
 ```python
 {{call .ConstructorGenerator "python" .ArgsRequired}}

@@ -278,14 +278,18 @@ func (mod *modContext) genConstructorCS(r schema.Resource) string {
 func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool) []DocObjectType {
 	tokens := stringSet{}
 	mod.getTypes(properties, tokens)
+
 	var objs []DocObjectType
 	for token := range tokens {
 		for _, t := range mod.pkg.Types {
 			if obj, ok := t.(*schema.ObjectType); ok && obj.Token == token {
+				if len(obj.Properties) == 0 {
+					continue
+				}
 				props := make([]Property, len(obj.Properties))
 				for _, prop := range obj.Properties {
 					props = append(props, Property{
-						Name:       prop.Name,
+						Name:       wbr(prop.Name),
 						Comment:    prop.Comment,
 						IsRequired: prop.IsRequired,
 						IsInput:    input,
@@ -333,8 +337,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 
 	inputProps := make([]Property, len(r.InputProperties))
 	for _, prop := range r.InputProperties {
+		if prop.Name == "" {
+			continue
+		}
 		inputProps = append(inputProps, Property{
-			Name:       prop.Name,
+			Name:       wbr(prop.Name),
 			Comment:    prop.Comment,
 			IsRequired: prop.IsRequired,
 			IsInput:    true,
@@ -344,8 +351,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 
 	outputProps := make([]Property, len(r.Properties))
 	for _, prop := range r.Properties {
+		if prop.Name == "" {
+			continue
+		}
 		outputProps = append(outputProps, Property{
-			Name:       prop.Name,
+			Name:       wbr(prop.Name),
 			Comment:    prop.Comment,
 			IsRequired: prop.IsRequired,
 			IsInput:    false,
@@ -357,31 +367,17 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	if r.StateInputs != nil {
 		stateInputs = make([]Property, len(r.StateInputs.Properties))
 		for _, prop := range r.StateInputs.Properties {
+			if prop.Name == "" {
+				continue
+			}
 			stateInputs = append(stateInputs, Property{
-				Name:       prop.Name,
+				Name:       wbr(prop.Name),
 				Comment:    prop.Comment,
 				IsRequired: prop.IsRequired,
 				IsInput:    true,
 				Type:       mod.typeStringPulumi(prop.Type, true),
 			})
 		}
-	}
-	data := resourceArgs{
-		Header: Header{
-			Title: name,
-		},
-
-		Comment: r.Comment,
-		// TODO: This is just temporary to include some data we don't have available yet.
-		Examples: mod.genMockupExamples(r),
-
-		ConstructorGenerator: constructorGenerator,
-
-		InputProperties:  inputProps,
-		OutputProperties: outputProps,
-		StateInputs:      stateInputs,
-		StateParam:       stateParam,
-		NestedTypes:      mod.genNestedTypes(r.InputProperties, true),
 	}
 
 	// TODO: In the examples on the page, we only want to show TypeScript and Python tabs for now, as initially
@@ -402,8 +398,23 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		}
 	}
 
-	if allOptionalInputs {
-		data.ArgsRequired = false
+	data := resourceArgs{
+		Header: Header{
+			Title: name,
+		},
+
+		Comment: r.Comment,
+		// TODO: This is just temporary to include some data we don't have available yet.
+		Examples: mod.genMockupExamples(r),
+
+		ConstructorGenerator: constructorGenerator,
+		ArgsRequired:         !allOptionalInputs,
+
+		InputProperties:  inputProps,
+		OutputProperties: outputProps,
+		StateInputs:      stateInputs,
+		StateParam:       stateParam,
+		NestedTypes:      mod.genNestedTypes(r.InputProperties, true),
 	}
 
 	return data
