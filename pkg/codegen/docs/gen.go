@@ -291,6 +291,28 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 	return objs
 }
 
+// getProperties returns a slice of properties that can be rendered for docs for
+// the provided slice of properties in the schema.
+func (mod *modContext) getProperties(properties []*schema.Property) []Property {
+	docProperties := make([]Property, 0, len(properties))
+	for _, prop := range properties {
+		if prop == nil {
+			continue
+		}
+		docProperties = append(docProperties, Property{
+			Name:       wbr(prop.Name),
+			Comment:    prop.Comment,
+			IsRequired: prop.IsRequired,
+			IsInput:    true,
+			Type:       mod.typeStringPulumi(prop.Type, true),
+		})
+	}
+
+	return docProperties
+}
+
+// genResource is the entrypoint for generating a doc for a resource
+// from its Pulumi schema.
 func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	// Create a resource module file into which all of this resource's types will go.
 	name := resourceName(*r)
@@ -308,49 +330,16 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		}
 	}
 
-	stateType := name + "State"
-	var stateParam string
-	if r.StateInputs != nil {
-		stateParam = fmt.Sprintf("state?: %s, ", stateType)
-	}
-
 	// TODO: Unlike the other languages, Python does not have a separate Args object for inputs.
 	// The args are all just named parameters of the constructor. Consider injecting
 	// `resource_name` and `opts` as the first two items in the table of properties.
-	inputProps := make([]Property, 0, len(r.InputProperties))
-	for _, prop := range r.InputProperties {
-		inputProps = append(inputProps, Property{
-			Name:       wbr(prop.Name),
-			Comment:    prop.Comment,
-			IsRequired: prop.IsRequired,
-			IsInput:    true,
-			Type:       mod.typeStringPulumi(prop.Type, true),
-		})
-	}
+	inputProps := mod.getProperties(r.InputProperties)
 
-	outputProps := make([]Property, 0, len(r.Properties))
-	for _, prop := range r.Properties {
-		outputProps = append(outputProps, Property{
-			Name:       wbr(prop.Name),
-			Comment:    prop.Comment,
-			IsRequired: prop.IsRequired,
-			IsInput:    false,
-			Type:       mod.typeStringPulumi(prop.Type, true),
-		})
-	}
+	outputProps := mod.getProperties(r.Properties)
 
 	var stateInputs []Property
 	if r.StateInputs != nil {
-		stateInputs = make([]Property, 0, len(r.StateInputs.Properties))
-		for _, prop := range r.StateInputs.Properties {
-			stateInputs = append(stateInputs, Property{
-				Name:       wbr(prop.Name),
-				Comment:    prop.Comment,
-				IsRequired: prop.IsRequired,
-				IsInput:    true,
-				Type:       mod.typeStringPulumi(prop.Type, true),
-			})
-		}
+		stateInputs = mod.getProperties(r.StateInputs.Properties)
 	}
 
 	// TODO: In the examples on the page, we only want to show TypeScript and Python tabs for now, as initially
@@ -378,7 +367,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 
 		Comment: r.Comment,
 		// TODO: This is just temporary to include some data we don't have available yet.
-		Examples: mod.genMockupExamples(r),
+		Examples: mod.getMockupExamples(r),
 
 		ConstructorGenerator: constructorGenerator,
 		ArgsRequired:         !allOptionalInputs,
@@ -386,7 +375,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		InputProperties:  inputProps,
 		OutputProperties: outputProps,
 		StateInputs:      stateInputs,
-		StateParam:       stateParam,
+		StateParam:       name + "State",
 		NestedTypes:      mod.genNestedTypes(r.InputProperties, true),
 	}
 
@@ -620,9 +609,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			// nolint gosec
 			return template.HTML(html)
 		},
-		"lowerCase": func(str string) string {
-			return strings.ToLower(str)
-		},
 	}).ParseGlob("/home/praneetloke/go/src/github.com/pulumi/pulumi/pkg/codegen/docs/templates/*.tmpl")
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing templates")
@@ -714,7 +700,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 }
 
 // TODO: Remove this when we have real examples available.
-func (mod *modContext) genMockupExamples(r *schema.Resource) []exampleUsage {
+func (mod *modContext) getMockupExamples(r *schema.Resource) []exampleUsage {
 
 	if resourceName(*r) != "Bucket" {
 		return nil

@@ -1,3 +1,7 @@
+{{define "argIsRequired"}}
+{{if .}}(Required){{else}}(Optional){{end}}
+{{end}}
+
 {{define "properties"}}
 <table class="ml-6">
     <thead>
@@ -14,10 +18,7 @@
             <td class="align-top">
                 <code>{{htmlSafe .Type}}</code>
             </td>
-            <td class="align-top">
-            {{if .IsInput}} {{if .IsRequired}} (Required) {{else}} (Optional) {{end}} {{end}}
-            {{.Comment}}
-            </td>
+            <td class="align-top">{{htmlSafe "{{% md %}}"}} {{if .IsInput}}{{template "argIsRequired" .IsRequired}}{{- end}} {{- .Comment}} {{htmlSafe "{{% /md %}}"}}</td>
         </tr>
     {{end}}
     </tbody>
