@@ -9,7 +9,8 @@ class MyComponent : ComponentResource
 {
     public RandomString Child { get; }
     
-    public MyComponent(string name, ComponentResourceOptions? options = null) : base("my:component:MyComponent", name, options)
+    public MyComponent(string name, ComponentResourceOptions? options = null)
+        : base("my:component:MyComponent", name, options)
     {
         this.Child = new RandomString($"{name}-child",
             new RandomStringArgs { Length = 5 },
@@ -17,7 +18,8 @@ class MyComponent : ComponentResource
     }
 }
 
-// Scenario #5 - cross-resource transformations that inject dependencies on one resource into another.
+// Scenario #5 - cross-resource transformations that inject the output of one resource to the input
+// of the other one.
 class MyOtherComponent : ComponentResource
 {
     public RandomString Child1 { get; }
@@ -37,31 +39,11 @@ class MyOtherComponent : ComponentResource
 }
 
 class TransformationsStack : Stack
-{
-    private const string RandomStringType = "random:index/randomString:RandomString";
-    
-    // Scenario #3 - apply a transformation to the Stack to transform all (future) resources in the stack
-    private static ResourceTransformationResult? scenario3(ResourceTransformationArgs args)
-    {
-        if (args.Resource.GetResourceType() == RandomStringType && args.Args is RandomStringArgs oldArgs)
-        {
-            var resultArgs = new RandomStringArgs
-            {
-                Length = oldArgs.Length,
-                MinUpper = oldArgs.MinUpper,
-                OverrideSpecial = Output.Format($"{oldArgs.OverrideSpecial}stackvalue")
-            };
-            return new ResourceTransformationResult(resultArgs, args.Options);
-        }
-
-        return null;
-    }
-    
-    public TransformationsStack() : base(new StackOptions { ResourceTransformations = {scenario3} })
+{   
+    public TransformationsStack() : base(new StackOptions { ResourceTransformations = {Scenario3} })
     {
         // Scenario #1 - apply a transformation to a CustomResource
-        var res1 = new RandomString("res1", new RandomStringArgs { Length = 5 },
-        new CustomResourceOptions
+        var res1 = new RandomString("res1", new RandomStringArgs { Length = 5 }, new CustomResourceOptions
         {
             ResourceTransformations =
             { 
@@ -174,8 +156,25 @@ class TransformationsStack : Stack
             }
         }
     }
-    
-    
+        
+    // Scenario #3 - apply a transformation to the Stack to transform all (future) resources in the stack
+    private static ResourceTransformationResult? Scenario3(ResourceTransformationArgs args)
+    {
+        if (args.Resource.GetResourceType() == RandomStringType && args.Args is RandomStringArgs oldArgs)
+        {
+            var resultArgs = new RandomStringArgs
+            {
+                Length = oldArgs.Length,
+                MinUpper = oldArgs.MinUpper,
+                OverrideSpecial = Output.Format($"{oldArgs.OverrideSpecial}stackvalue")
+            };
+            return new ResourceTransformationResult(resultArgs, args.Options);
+        }
+
+        return null;
+    }   
+
+    private const string RandomStringType = "random:index/randomString:RandomString";
 }
 
 class Program

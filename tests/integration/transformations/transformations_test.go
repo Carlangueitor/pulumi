@@ -146,13 +146,16 @@ func dotNetValidator() func(t *testing.T, stack integration.RuntimeValidationSta
 				assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("length"))
 			}
 			// "res2" has a transformation which adds additionalSecretOutputs to it's
-			// "child"
+			// "child" and sets minUpper to 2
 			if res.URN.Name() == "res2-child" {
 				foundRes2Child = true
 				assert.Equal(t, res.Type, tokens.Type(resName))
 				assert.Equal(t, res.Parent.Type(), tokens.Type("my:component:MyComponent"))
 				assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("length"))
 				assert.Contains(t, res.AdditionalSecretOutputs, resource.PropertyKey("special"))
+				minUpper := res.Inputs["minUpper"]
+				assert.NotNil(t, minUpper)
+				assert.Equal(t, 2.0, minUpper.(float64))
 			}
 			// "res3" is impacted by a global stack transformation which sets
 			// overrideSpecial to "stackvalue"

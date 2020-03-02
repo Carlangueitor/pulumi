@@ -11,8 +11,8 @@ namespace Pulumi
         
         /// <summary>
         /// Optional list of transformations to apply to this stack's resources during construction.
-        /// The transformations are applied in order, and are applied prior to transformation applied
-        /// to parents walking from the resource up to the stack.
+        /// The transformations are applied in order, and are applied after all the transformations of custom
+        /// and component resources in the stack.
         /// </summary>
         public List<ResourceTransformation> ResourceTransformations
         {
