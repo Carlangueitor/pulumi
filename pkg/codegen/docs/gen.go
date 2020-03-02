@@ -267,7 +267,7 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 				if len(obj.Properties) == 0 {
 					continue
 				}
-				props := make([]Property, len(obj.Properties))
+				props := make([]Property, 0, len(obj.Properties))
 				for _, prop := range obj.Properties {
 					props = append(props, Property{
 						Name:       wbr(prop.Name),
@@ -314,11 +314,11 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		stateParam = fmt.Sprintf("state?: %s, ", stateType)
 	}
 
-	inputProps := make([]Property, len(r.InputProperties))
+	// TODO: Unlike the other languages, Python does not have a separate Args object for inputs.
+	// The args are all just named parameters of the constructor. Consider injecting
+	// `resource_name` and `opts` as the first two items in the table of properties.
+	inputProps := make([]Property, 0, len(r.InputProperties))
 	for _, prop := range r.InputProperties {
-		if prop.Name == "" {
-			continue
-		}
 		inputProps = append(inputProps, Property{
 			Name:       wbr(prop.Name),
 			Comment:    prop.Comment,
@@ -328,11 +328,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 		})
 	}
 
-	outputProps := make([]Property, len(r.Properties))
+	outputProps := make([]Property, 0, len(r.Properties))
 	for _, prop := range r.Properties {
-		if prop.Name == "" {
-			continue
-		}
 		outputProps = append(outputProps, Property{
 			Name:       wbr(prop.Name),
 			Comment:    prop.Comment,
@@ -344,11 +341,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 
 	var stateInputs []Property
 	if r.StateInputs != nil {
-		stateInputs = make([]Property, len(r.StateInputs.Properties))
+		stateInputs = make([]Property, 0, len(r.StateInputs.Properties))
 		for _, prop := range r.StateInputs.Properties {
-			if prop.Name == "" {
-				continue
-			}
 			stateInputs = append(stateInputs, Property{
 				Name:       wbr(prop.Name),
 				Comment:    prop.Comment,
@@ -626,7 +620,10 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			// nolint gosec
 			return template.HTML(html)
 		},
-	}).ParseGlob("/Users/praneetloke/go/src/github.com/pulumi/pulumi/pkg/codegen/docs/templates/*.tmpl")
+		"lowerCase": func(str string) string {
+			return strings.ToLower(str)
+		},
+	}).ParseGlob("/home/praneetloke/go/src/github.com/pulumi/pulumi/pkg/codegen/docs/templates/*.tmpl")
 	if err != nil {
 		return nil, errors.Wrap(err, "parsing templates")
 	}
