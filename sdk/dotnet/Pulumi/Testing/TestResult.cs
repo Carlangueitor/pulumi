@@ -31,7 +31,12 @@ namespace Pulumi.Testing
         /// </summary>
         public ImmutableDictionary<string, object> StackOutputs { get; }
 
-        // TODO: this is an awkward method that I had to add to extract values from outputs. Is there a better way?
+        /// <summary>
+        /// Extract a value from an <see cref="Output{T}"/>. Can only be used
+        /// for outputs fount in <see cref="Resources"/>.
+        /// </summary>
+        /// <param name="output">An output containing a value.</param>
+        /// <returns>An awaitable task that returns the value.</returns>
         public Task<T> GetAsync<T>(Output<T> output) => output.GetValueAsync();
 
         internal TestResult(bool hasErrors, IEnumerable<string> loggedErrors, IEnumerable<Resource> resources, ImmutableDictionary<string, object> stackOutputs) 

@@ -93,6 +93,8 @@ namespace Pulumi
         /// Entry point to test a Pulumi application. Deployment will
         /// instantiate a new stack instance based on the type passed as TStack
         /// type parameter. This method creates no real resources.
+        /// Note: Currently, unit tests that call <see cref="TestAsync{TStack}"/>
+        /// must run sequentially; parallel execution is not supported.
         /// </summary>
         /// <typeparam name="TStack">The type of the stack to test.</typeparam>
         /// <returns>Test result containing created resources and errors, if any.</returns>
