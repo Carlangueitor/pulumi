@@ -209,25 +209,6 @@ func (mod *modContext) typeStringPulumi(t schema.Type, link bool) string {
 	return typ
 }
 
-func (mod *modContext) genConstructorTS(r schema.Resource, isArgsRequired bool) string {
-	name := resourceName(r)
-
-	argsType := name + "Args"
-
-	buffer := &bytes.Buffer{}
-	err := templates.ExecuteTemplate(buffer, "ts_constructor.tmpl", map[string]interface{}{
-		"Name":           name,
-		"ArgsType":       argsType,
-		"IsArgsRequired": isArgsRequired,
-	})
-
-	if err != nil {
-		panic(err)
-	}
-
-	return buffer.String()
-}
-
 func (mod *modContext) genConstructorPython(r schema.Resource) string {
 	buffer := &bytes.Buffer{}
 
@@ -316,8 +297,6 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 
 	constructorGenerator := func(lang string, isArgsRequired bool) string {
 		switch lang {
-		case "typescript":
-			return mod.genConstructorTS(*r, isArgsRequired)
 		case "python":
 			return mod.genConstructorPython(*r)
 		case "go":

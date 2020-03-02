@@ -10,7 +10,7 @@
     <tbody>
     {{range .}}
         <tr>
-            <td class="align-top">{{.Name}}</td>
+            <td class="align-top">{{htmlSafe .Name}}</td>
             <td class="align-top">
                 <code>{{htmlSafe .Type}}</code>
             </td>

@@ -82,12 +82,10 @@ public static get(name: string, id: pulumi.Input<pulumi.ID>, {{.StateParam}}opts
 def get(resource_name, id, opts=None, acceleration_status=None, acl=None, arn=None, bucket=None, bucket_domain_name=None, bucket_prefix=None, bucket_regional_domain_name=None, cors_rules=None, force_destroy=None, hosted_zone_id=None, lifecycle_rules=None, loggings=None, object_lock_configuration=None, policy=None, region=None, replication_configuration=None, request_payer=None, server_side_encryption_configuration=None, tags=None, versioning=None, website=None, website_domain=None, website_endpoint=None)
 ```
 
-<!-- TODO: This is currently hard coded for Bucket. Need to generalize for all resources. -->
 ```go
 func GetBucket(ctx *pulumi.Context, name string, id pulumi.IDInput, state *BucketState, opts ...pulumi.ResourceOption) (*Bucket, error)
 ```
 
-<!-- TODO: This is currently hard coded for Bucket. Need to generalize for all resources. -->
 ```csharp
 public static Bucket Get(string name, Input<string> id, BucketState? state = null, CustomResourceOptions? options = null);
 ```
