@@ -20,6 +20,7 @@ package gen
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -913,11 +914,22 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
+type GoLanguageData struct {
+	Packages map[string]string `json:"packages"`
+}
+
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+	var languageData GoLanguageData
+	err := json.Unmarshal(pkg.Language["go"], &languageData)
+	if err != nil {
+		return nil, err
+	}
+
 	// group resources, types, and functions into Go packages
 	packages := map[string]*pkgContext{}
 	getPkg := func(token string) *pkgContext {
 		mod := pkg.TokenToModule(token)
+		mod = languageData.Packages[mod]
 		pack, ok := packages[mod]
 		if !ok {
 			pack = &pkgContext{
