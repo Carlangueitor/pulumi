@@ -35,6 +35,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/util/contract"
 )
 
+var supportedLanguages = []string{"csharp", "go", "nodejs", "python"}
+
 var templates *template.Template
 
 // Header represents the header of each resource markdown file.
@@ -59,10 +61,10 @@ type Property struct {
 	IsInput bool
 }
 
-// DocObjectType represents a complex type.
-type DocObjectType struct {
+// DocNestedType represents a complex type.
+type DocNestedType struct {
 	Name       string
-	Properties []Property
+	Properties map[string][]Property
 }
 
 type resourceArgs struct {
@@ -74,12 +76,12 @@ type resourceArgs struct {
 	ConstructorGenerator func(string, bool) string
 	ArgsRequired         bool
 
-	InputProperties  []Property
-	OutputProperties []Property
-	StateInputs      []Property
+	InputProperties  map[string][]Property
+	OutputProperties map[string][]Property
+	StateInputs      map[string][]Property
 	StateParam       string
 
-	NestedTypes []DocObjectType
+	NestedTypes []DocNestedType
 }
 
 type stringSet map[string]struct{}
@@ -210,8 +212,6 @@ func (mod *modContext) typeStringPulumi(t schema.Type, link bool) string {
 }
 
 func (mod *modContext) genConstructorPython(r schema.Resource) string {
-	buffer := &bytes.Buffer{}
-
 	props := strings.Builder{}
 	for _, prop := range r.InputProperties {
 		props.WriteString(fmt.Sprintf(", %s=None", python.PyName(prop.Name)))
@@ -220,11 +220,7 @@ func (mod *modContext) genConstructorPython(r schema.Resource) string {
 	// deliberately not included in doc strings.
 	props.WriteString(fmt.Sprint(", __props__=None)"))
 
-	err := templates.ExecuteTemplate(buffer, "py_constructor.tmpl", props.String())
-	if err != nil {
-		panic(err)
-	}
-	return buffer.String()
+	return fmt.Sprintf("def __init__(__self__, resource_name, opts=None%s", props.String())
 }
 
 func (mod *modContext) genConstructorGo(r schema.Resource) string {
@@ -256,28 +252,24 @@ func (mod *modContext) genConstructorCS(r schema.Resource) string {
 	return fmt.Sprintf("public %s(string name, %s args%s, %s? options = null)\n", name, argsType, argsDefault, optionsType)
 }
 
-func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool) []DocObjectType {
+func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool) []DocNestedType {
 	tokens := stringSet{}
 	mod.getTypes(properties, tokens)
 
-	var objs []DocObjectType
+	var objs []DocNestedType
 	for token := range tokens {
 		for _, t := range mod.pkg.Types {
 			if obj, ok := t.(*schema.ObjectType); ok && obj.Token == token {
 				if len(obj.Properties) == 0 {
 					continue
 				}
-				props := make([]Property, 0, len(obj.Properties))
-				for _, prop := range obj.Properties {
-					props = append(props, Property{
-						Name:       wbr(prop.Name),
-						Comment:    prop.Comment,
-						IsRequired: prop.IsRequired,
-						IsInput:    input,
-						Type:       mod.typeStringPulumi(prop.Type, true),
-					})
+
+				props := make(map[string][]Property)
+				for _, lang := range supportedLanguages {
+					props[lang] = mod.getProperties(obj.Properties, lang, true)
 				}
-				objs = append(objs, DocObjectType{
+
+				objs = append(objs, DocNestedType{
 					Name:       tokenToName(obj.Token),
 					Properties: props,
 				})
@@ -291,19 +283,34 @@ func (mod *modContext) genNestedTypes(properties []*schema.Property, input bool)
 	return objs
 }
 
+func getLanguagePropertyName(name string, lang string) string {
+	switch lang {
+	case "python":
+		return python.PyName(name)
+	case "go", "csharp":
+		return title(name)
+	default:
+		return wbr(name)
+	}
+}
+
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
-func (mod *modContext) getProperties(properties []*schema.Property) []Property {
+func (mod *modContext) getProperties(properties []*schema.Property, lang string, isInput bool) []Property {
+	if properties == nil {
+		return nil
+	}
+
 	docProperties := make([]Property, 0, len(properties))
 	for _, prop := range properties {
 		if prop == nil {
 			continue
 		}
 		docProperties = append(docProperties, Property{
-			Name:       wbr(prop.Name),
+			Name:       getLanguagePropertyName(prop.Name, lang),
 			Comment:    prop.Comment,
 			IsRequired: prop.IsRequired,
-			IsInput:    true,
+			IsInput:    isInput,
 			Type:       mod.typeStringPulumi(prop.Type, true),
 		})
 	}
@@ -333,23 +340,16 @@ func (mod *modContext) genResource(r *schema.Resource) resourceArgs {
 	// TODO: Unlike the other languages, Python does not have a separate Args object for inputs.
 	// The args are all just named parameters of the constructor. Consider injecting
 	// `resource_name` and `opts` as the first two items in the table of properties.
-	inputProps := mod.getProperties(r.InputProperties)
-
-	outputProps := mod.getProperties(r.Properties)
-
-	var stateInputs []Property
-	if r.StateInputs != nil {
-		stateInputs = mod.getProperties(r.StateInputs.Properties)
+	inputProps := make(map[string][]Property)
+	outputProps := make(map[string][]Property)
+	stateInputs := make(map[string][]Property)
+	for _, lang := range supportedLanguages {
+		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true)
+		outputProps[lang] = mod.getProperties(r.Properties, lang, false)
+		if r.StateInputs != nil {
+			stateInputs[lang] = mod.getProperties(r.StateInputs.Properties, lang, true)
+		}
 	}
-
-	// TODO: In the examples on the page, we only want to show TypeScript and Python tabs for now, as initially
-	// we'll only have examples in those languages.
-	// However, lower on the page, we will be showing declarations and types in all of the supported languages.
-	// The default behavior of the lang chooser is to switch all lang tabs on the page when a tab is selected.
-	// This means, if Go is selected lower in the page, then the chooser tabs for the examples will try to show
-	// Go content, which won't be present. We should fix this somehow such that selecting Go lower in the page
-	// doesn't cause the example tabs to change. But if Python is selected, the example tabs should change since
-	// Python is available there.
 
 	allOptionalInputs := true
 	for _, prop := range r.InputProperties {

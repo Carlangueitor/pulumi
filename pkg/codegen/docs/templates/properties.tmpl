@@ -1,8 +1,8 @@
-{{define "argIsRequired"}}
-{{if .}}(Required){{else}}(Optional){{end}}
+{{define "propIsRequired"}}
+{{if .}} (Required) {{- else}} (Optional){{- end}}
 {{end}}
 
-{{define "properties"}}
+{{define "properties_table"}}
 <table class="ml-6">
     <thead>
         <tr>
@@ -18,9 +18,24 @@
             <td class="align-top">
                 <code>{{htmlSafe .Type}}</code>
             </td>
-            <td class="align-top">{{htmlSafe "{{% md %}}"}} {{if .IsInput}}{{template "argIsRequired" .IsRequired}}{{- end}} {{- .Comment}} {{htmlSafe "{{% /md %}}"}}</td>
+            <td class="align-top">{{htmlSafe "{{% md %}}"}} {{if .IsInput}}{{template "propIsRequired" .IsRequired}}{{- end}} {{- .Comment}} {{htmlSafe "{{% /md %}}"}}</td>
         </tr>
     {{end}}
     </tbody>
 </table>
+{{end}}
+
+{{define "properties"}}
+
+{{htmlSafe "{{< langchoose csharp >}}"}}
+
+{{range $lang, $props := .}}
+{{ print "{{% lang" }} {{ print $lang }} {{ print "%}}" }}
+
+{{template "properties_table" $props}}
+
+{{print "{{% /lang %}}"}}
+
+{{end}}
+
 {{end}}
