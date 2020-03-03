@@ -740,6 +740,12 @@ func (pkg *pkgContext) genInitFn(w io.Writer, types []*schema.ObjectType) {
 	fmt.Fprintf(w, "}\n")
 }
 
+func (pkg *pkgContext) importBasePath() string {
+	s := pkg.pkg.Repository
+	s = strings.TrimPrefix(s, "https://")
+	return fmt.Sprintf("%s/sdk/go/%s", s, pkg.pkg.Name)
+}
+
 func (pkg *pkgContext) getTypeImports(t schema.Type, imports stringSet, parent *string) {
 	switch t := t.(type) {
 	case *schema.ArrayType:
@@ -755,7 +761,7 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, imports stringSet, parent *
 	case *schema.ObjectType:
 		mod := pkg.pkg.TokenToModule(t.Token)
 		if mod != pkg.mod { // TODO: may need to normalize for k8s.io prefixes
-			imports.add(path.Join(pkg.pkg.Repository, mod))
+			imports.add(path.Join(pkg.importBasePath(), mod))
 		}
 
 		for _, p := range t.Properties {
