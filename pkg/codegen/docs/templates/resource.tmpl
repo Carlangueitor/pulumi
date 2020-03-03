@@ -2,26 +2,10 @@
 
 {{ htmlSafe .Comment }}
 
-## Example Usage
+<!-- Examples -->
+{{ if ne (len .Examples) 0 }}{{ template "examples" .Examples }}{{ end }}
 
-{{ range .Examples }}
-### {{ .Heading }}
-
-{{ htmlSafe "{{< langchoose nojavascript nogo >}}" }}
-
-```typescript
-{{ htmlSafe .Code }}
-```
-
-```python
-Coming soon!
-```
-
-```csharp
-Coming soon!
-```
-{{ end }}
-
+<!-- Create resource -->
 ## Create a {{ .Header.Title }} Resource
 
 {{ htmlSafe "{{< langchoose csharp >}}" }}
@@ -57,12 +41,14 @@ Creates a {{ .Header.Title }} resource with the given unique name, arguments, an
 The following arguments are supported:
 {{ template "properties" .InputProperties }}
 
+<!-- Output properties -->
 ## {{.Header.Title}} Output Properties
 
 The following output properties are available:
 
 {{ template "properties" .OutputProperties }}
 
+<!-- Read resource -->
 ## Look up an Existing {{.Header.Title}} Resource
 
 {{ htmlSafe "{{< langchoose csharp >}}" }}
@@ -102,6 +88,7 @@ The following state arguments are supported:
 {{ template "properties" .StateInputs }}
 {{ end }}
 
+<!-- Supporting types -->
 ## Supporting Types
 {{ range .NestedTypes }}
 #### {{ .Name }}
