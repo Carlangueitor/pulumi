@@ -530,7 +530,7 @@ func ImportSpec(spec PackageSpec) (*Package, error) {
 		Keywords:     spec.Keywords,
 		Homepage:     spec.Homepage,
 		License:      spec.License,
-		Repository:   spec.Repository,
+		Repository:   "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes",
 		Config:       config,
 		Types:        typeList,
 		Provider:     provider,

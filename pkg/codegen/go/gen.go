@@ -24,6 +24,7 @@ import (
 	"io"
 	"path"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -739,22 +740,38 @@ func (pkg *pkgContext) genInitFn(w io.Writer, types []*schema.ObjectType) {
 	fmt.Fprintf(w, "}\n")
 }
 
-func (pkg *pkgContext) getTypeImports(t schema.Type, imports stringSet) {
+func (pkg *pkgContext) getTypeImports(t schema.Type, imports stringSet, parent *string) {
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		pkg.getTypeImports(t.ElementType, imports)
+		if parent != nil && t.ElementType.String() == *parent {
+			return
+		}
+		pkg.getTypeImports(t.ElementType, imports, parent)
 	case *schema.MapType:
-		pkg.getTypeImports(t.ElementType, imports)
+		if parent != nil && t.ElementType.String() == *parent {
+			return
+		}
+		pkg.getTypeImports(t.ElementType, imports, parent)
 	case *schema.ObjectType:
 		mod := pkg.pkg.TokenToModule(t.Token)
-		if mod != pkg.mod {
+		if mod != pkg.mod { // TODO: may need to normalize for k8s.io prefixes
 			imports.add(path.Join(pkg.pkg.Repository, mod))
 		}
 
 		for _, p := range t.Properties {
-			pkg.getTypeImports(p.Type, imports)
+			if parent != nil && p.Type.String() == *parent {
+				continue
+			}
+			pkg.getTypeImports(p.Type, imports, &t.Token)
 		}
 	case *schema.UnionType:
+		for _, e := range t.ElementTypes {
+			s := e.String()
+			if parent != nil && s == *parent {
+				continue
+			}
+			pkg.getTypeImports(e, imports, &s)
+		}
 		// TODO(pdg): union types
 	}
 }
@@ -762,13 +779,13 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, imports stringSet) {
 func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
 	switch member := member.(type) {
 	case *schema.ObjectType:
-		pkg.getTypeImports(member, imports)
+		pkg.getTypeImports(member, imports, nil)
 	case *schema.Resource:
 		for _, p := range member.Properties {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, imports, nil)
 		}
 		for _, p := range member.InputProperties {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, imports, nil)
 
 			if p.IsRequired {
 				imports.add("github.com/pkg/errors")
@@ -776,14 +793,14 @@ func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
 		}
 	case *schema.Function:
 		if member.Inputs != nil {
-			pkg.getTypeImports(member.Inputs, imports)
+			pkg.getTypeImports(member.Inputs, imports, nil)
 		}
 		if member.Outputs != nil {
-			pkg.getTypeImports(member.Outputs, imports)
+			pkg.getTypeImports(member.Outputs, imports, nil)
 		}
 	case []*schema.Property:
 		for _, p := range member {
-			pkg.getTypeImports(p.Type, imports)
+			pkg.getTypeImports(p.Type, imports, nil)
 		}
 	default:
 		return
@@ -807,9 +824,16 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 	fmt.Fprintf(w, "package %s\n\n", pkgName)
 
 	var imports []string
+	re := regexp.MustCompile(`/\w+/\w+$`) // Match the end of an import path to generate an alias
 	if len(importedPackages) > 0 {
 		for k := range importedPackages {
-			imports = append(imports, k)
+			if strings.Contains(k, "kubernetes") {
+				alias := strings.Replace(re.FindString(k), "/", "", -1)
+				aliasedImport := fmt.Sprintf(`%s "%s"`, alias, k)
+				imports = append(imports, aliasedImport)
+			} else {
+				imports = append(imports, fmt.Sprintf("%q", k))
+			}
 		}
 		sort.Strings(imports)
 	}
@@ -826,7 +850,11 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 			if i == "" {
 				fmt.Fprintf(w, "\n")
 			} else {
-				fmt.Fprintf(w, "\t\"%s\"\n", i)
+				if strings.Contains(i, `"`) {
+					fmt.Fprintf(w, "\t%s\n", i)
+				} else {
+					fmt.Fprintf(w, "\t%q\n", i)
+				}
 			}
 		}
 		fmt.Fprintf(w, ")\n\n")
